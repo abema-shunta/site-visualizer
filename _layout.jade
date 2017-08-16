@@ -1,0 +1,16 @@
+doctype
+html
+  head
+    meta(charset="utf-8")
+    script(type="text/javascript" src="https://d3js.org/d3.v4.min.js")
+    script(type="text/javascript" src="https://d3js.org/d3-collection.v1.min.js")
+    script(type="text/javascript" src="https://d3js.org/d3-dispatch.v1.min.js")
+    script(type="text/javascript" src="https://d3js.org/d3-quadtree.v1.min.js")
+    script(type="text/javascript" src="https://d3js.org/d3-timer.v1.min.js")
+    script(type="text/javascript" src="https://d3js.org/d3-force.v1.min.js")
+    link(rel="stylesheet" href="/main.css")
+  body
+    canvas
+    != yield
+    script(type="text/javascript" src="./data.js")
+    script(type="text/javascript" src="./script.js")
