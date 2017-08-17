@@ -1,25 +1,32 @@
 width = window.innerWidth
-height = window.innerHeight
+height = window.innerHeight - 120
 
 activeDate = new Date()
 formatDate = (d) -> "#{d.getFullYear()}_#{('0'+(d.getMonth()+1)).slice(-2)}_#{('0'+d.getDate()).slice(-2)}"
 
-canvas = document.querySelector("canvas")
-context = canvas.getContext("2d")
-canvas.setAttribute("width", width)
-canvas.setAttribute("height", height)
+svg = d3.select("svg")
+svg.attr("width", width)
+svg.attr("height", height)
 
 links = undefined
 nodes = undefined
-
+d3link = undefined
+d3node = undefined
 nodeMax = undefined
 linkMax = undefined
 
+calcNodeSize = (d) -> 5+35*(d.volume/nodeMax)
+calcLinkWidth = (d) -> 0.1 + (d.volume/linkMax)
+calcLinkStroke = (d) ->
+  col = "#FFF"
+  if d.source.etype=="start" or d.target.etype=="start"
+    col = "#0F0"
+  if d.target.etype=="end" or d.source.etype=="end"
+    col = "#F00"
+  col
 getMax = (items)->
   max = 0
-  items.forEach (i)->
-    vol = parseInt(i.volume)
-    max = vol if vol > max
+  items.forEach (i)-> max = vol if (vol = parseInt(i.volume)) > max
   max
 
 considerFixedPosition = (d)->
@@ -33,6 +40,8 @@ considerFixedPosition = (d)->
 d3.csv "csv/GenerateLinksForSiteVisualization_#{formatDate activeDate}.csv", (link_error, _links) ->
   throw link_error if link_error
   links = _links
+  self_directed_links = links.filter (e,i,a)->e.source==e.target
+  links = links.filter (e,i,a)->e.source!=e.target
   linkMax = getMax links
 
   d3.csv "csv/GenerateNodesForSiteVisualization_#{formatDate activeDate}.csv", (node_error, _nodes) ->
@@ -44,90 +53,95 @@ d3.csv "csv/GenerateLinksForSiteVisualization_#{formatDate activeDate}.csv", (li
       .force('link', d3.forceLink().id((d) -> d.id))
       .force('charge', d3.forceManyBody())
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collide', d3.forceCollide().radius((d) -> return 5+35*(d.volume/nodeMax)).iterations(2))
+      .force('collide', d3.forceCollide().radius(calcNodeSize).iterations(2))
 
-    dragstarted = ->
+    simulation.velocityDecay(0.8)
+    simulation.alphaDecay(0.001)
+
+    dragstarted = (d) ->
       if !d3.event.active
         simulation.alphaTarget(0.3).restart()
-      d3.event.subject.fx = d3.event.subject.x
-      d3.event.subject.fy = d3.event.subject.y
+      d.fx = d.x
+      d.fy = d.y
       return
 
-    dragged = ->
-      d3.event.subject.fx = d3.event.x
-      d3.event.subject.fy = d3.event.y
+    dragged = (d) ->
+      d.fx = d3.event.x
+      d.fy = d3.event.y
       return
 
-    dragended = ->
+    dragended = (d) ->
       if !d3.event.active
         simulation.alphaTarget 0
-      d3.event.subject.fx = null
-      d3.event.subject.fy = null
+      d.fx = null
+      d.fy = null
       return
 
-    drawLink = (d) ->
-      #context.lineWidth = 1+(5*(d.volume/linkMax))
-      context.moveTo d.source.x, d.source.y
-      context.lineTo d.target.x, d.target.y
-      return
+    d3links = svg.append("g")
+        .attr("class", "links")
+        .selectAll("line")
+        .data(links)
+        .enter()
+        .append("line")
+        .attr("stroke-width", 3)
+        .attr("opacity", calcLinkWidth)
 
-    drawNode = (d) ->
-      context.moveTo d.x + 3, d.y
-      context.arc d.x, d.y, 5 + 35 * (d.volume/nodeMax) , 0, 2 * Math.PI
-      return
+    d3nodes = svg.append("g")
+        .attr("class", "nodes")
+        .selectAll("circle")
+        .data(nodes)
+        .enter().append("circle")
+        .attr("r", calcNodeSize)
+        .attr("fill", (d)-> if d.cv_count > 0 then "#FF0" else "#FFF")
+        .on("mouseover", (d) -> displayDetail(d.path, d.title, d.volume, d.id))
+        .call(d3.drag()
+            .on("start", dragstarted)
+            .on("drag", dragged)
+            .on("end", dragended))
 
     ticked = ->
       nodes.forEach considerFixedPosition
-      context.clearRect 0, 0, width, height
-      context.beginPath()
-      links.forEach drawLink
-      context.stroke()
-      context.strokeStyle = '#aaa'
-      context.beginPath()
-      nodes.forEach drawNode
-      context.fillStyle = '#fff'
-      context.fill()
-      context.strokeStyle = '#fff'
-      context.stroke()
-
-    dragsubject = ->
-      simulation.find d3.event.x, d3.event.y
+      d3links
+        .attr("x1", (d) -> d.source.x )
+        .attr("y1", (d) -> d.source.y )
+        .attr("x2", (d) -> d.target.x )
+        .attr("y2", (d) -> d.target.y )
+      d3nodes
+        .attr("cx", (d) -> d.x)
+        .attr("cy", (d) -> d.y)
 
     simulation.nodes(nodes).on 'tick', ticked
-    simulation.force('link').links(links).distance((d)-> ((linkMax - d.volume)/linkMax)*300 + 100)
-    d3.select(canvas).call d3.drag().container(canvas).subject(dragsubject).on('start', dragstarted).on('drag', dragged).on('end', dragended)
+    simulation.force('link').links(links).distance((d)-> ((linkMax - d.volume)/linkMax)*300 + 10).strength(0.3)
+    d3links.attr("stroke", calcLinkStroke)
 
-# ---
-# generated by js2coffee 2.2.0
+isAllowedOpenDetail = false
 
-# isAllowedOpenDetail = false
-#
-# resetActiveNode = ()->
-#   activeNode = null
-#
-# c = (t)-> console.log t
-#
-# openDetail = (path) ->
-#   c "openDetail"
-#   if isAllowedOpenDetail
-#     window.open().location.href = "http://" + path
-#
-# prepareOpenDetail = ()->
-#   c "prepareOpenDetail"
-#   isAllowedOpenDetail = true
-#
-# preventOpenDetail = ()->
-#   c "preventOpenDetail"
-#   isAllowedOpenDetail = false
-#
-# displayDetail = (path, title, volume, id)->
-#   c "displayDetail"
-#   activeNode = id
-#   detail_panel = document.querySelector("#detail_panel")
-#   title_elm = detail_panel.querySelector(".title")
-#   title_elm.textContent = title
-#   path_elm = detail_panel.querySelector(".path")
-#   path_elm.setAttribute('href', "http://" + path)
-#   path_elm.textContent = path
-#   vol_elm = detail_panel.querySelector(".volume")
-#   vol_elm.textContent = volume
+resetActiveNode = ()->
+  activeNode = null
+
+c = (t)-> console.log t
+
+openDetail = (path) ->
+  c "openDetail"
+  if isAllowedOpenDetail
+    window.open().location.href = "http://" + path
+
+prepareOpenDetail = ()->
+  c "prepareOpenDetail"
+  isAllowedOpenDetail = true
+
+preventOpenDetail = ()->
+  c "preventOpenDetail"
+  isAllowedOpenDetail = false
+
+displayDetail = (path, title, volume, id)->
+  c "displayDetail"
+  activeNode = id
+  detail_panel = document.querySelector("#detail_panel")
+  title_elm = detail_panel.querySelector(".title")
+  title_elm.textContent = title
+  path_elm = detail_panel.querySelector(".path")
+  path_elm.setAttribute('href', "http://" + path)
+  path_elm.textContent = path
+  vol_elm = detail_panel.querySelector(".volume")
+  vol_elm.textContent = volume
