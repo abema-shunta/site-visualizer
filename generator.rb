@@ -1,5 +1,7 @@
-nodes = open "./csv/nodes.csv"
-links = open "./csv/links.csv"
+YYYY_MM_DD = "2018_07_10"
+
+nodes = open "./csv/GenerateNodesForSiteVisualization_#{YYYY_MM_DD}.csv"
+links = open "./csv/GenerateLinksForSiteVisualization_#{YYYY_MM_DD}.csv"
 data = open "data.coffee", "w"
 
 nodeMax = 0
