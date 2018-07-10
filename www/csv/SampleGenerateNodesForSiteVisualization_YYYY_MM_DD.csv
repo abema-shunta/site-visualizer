@@ -1,0 +1,6 @@
+id,path,title,cv_count,etype,volume
+0,,,0,start,
+1,,,0,end,
+2,www.sample.com,サンプルサイト,0,pageview,100
+3,www.sample.com/list,サンプルサイト-商品詳細,0,pageview,50
+4,www.sample.com/list,サンプルサイト-商品詳細,0,pageview,50
