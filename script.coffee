@@ -37,14 +37,14 @@ considerFixedPosition = (d)->
     d.x = width - 20
     d.y = height - 20
 
-d3.csv "csv/GenerateLinksForSiteVisualization_#{formatDate activeDate}.csv", (link_error, _links) ->
+d3.csv "csv/GenerateLinksForSiteVisualization.csv", (link_error, _links) ->
   throw link_error if link_error
   links = _links
   self_directed_links = links.filter (e,i,a)->e.source==e.target
   links = links.filter (e,i,a)->e.source!=e.target
   linkMax = getMax links
 
-  d3.csv "csv/GenerateNodesForSiteVisualization_#{formatDate activeDate}.csv", (node_error, _nodes) ->
+  d3.csv "csv/GenerateNodesForSiteVisualization.csv", (node_error, _nodes) ->
     throw node_error if node_error
     nodes = _nodes
     nodeMax = getMax nodes
